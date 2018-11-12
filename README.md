@@ -1,6 +1,6 @@
 ## Coursera's Mastering Software Development in R - Capstone Project
 
-* Travis badge (to be included)
+[![Build Status](https://travis-ci.org/danielmoralesx/noaaser.svg?branch=master)](https://travis-ci.org/danielmoralesx/noaaser)
 
 This package's release is the capstone project for Coursera's Mastering 
 Software Development in R Specialization. The functions are for treatment and 
