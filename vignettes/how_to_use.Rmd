@@ -1,0 +1,126 @@
+---
+title: "How to use noaaser"
+author: "Daniel Morales"
+date: "`r Sys.Date()`"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{How to use noaaser}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include = FALSE}
+library(noaaser)
+library(dplyr)
+library(ggplot2)
+filename <- system.file("extdata/earthquakes.tsv.gz", package = "noaaser")
+noaase_raw <- readr::read_delim(filename, delim = "\t")
+```
+
+This package provides two types of visualization and cleaning functions to 
+prepare the data for these visualizations. Exported functions are:
+
+* `eq_clean_data`
+* `eq_location_clean`
+* `geom_timeline`
+* `geom_timeline_label`
+* `eq_map`
+* `eq_create_label`
+
+## Cleaning data
+
+* `eq_clean_data`
+
+Takes raw NOAA data frame and returns a clean data frame, with a date column
+created by uniting the year, month, day and converting it to the Date class and 
+converts LATITUDE and LONGITUDE columns to numeric class.
+
+```r
+noaase_clean <- eq_clean_data(noaase_raw)
+```
+
+* `eq_location_clean`
+
+Takes raw NOAA data frame and returns a data frame with LOCATION_NAME column
+clean, by stripping out the country name (including the colon) and converting
+names to title case (as opposed to all caps).
+
+```r
+noaase_loc <- eq_location_clean(noaase_raw)
+```
+
+## Timelines
+
+* `geom_timeline`
+
+Timeline ggplot2 geom for NOAA significant earthquakes database.
+
+```{r fig.width = 7, fig.align = "center"}
+noaase_raw %>%
+  eq_clean_data() %>%
+  filter(YEAR >= 2000, YEAR <= 2016, 
+         COUNTRY %in% c("ITALY", "CANADA", "GREECE")) %>%
+  ggplot(ggplot2::aes(x = DATE,
+                      y = COUNTRY,
+                      size = as.numeric(EQ_PRIMARY),
+                      color = as.numeric(TOTAL_DEATHS))) +
+  geom_timeline() +
+  theme_classic() +
+  labs(size = "Richter scale value", color = "# deaths") +
+  theme(axis.line.y = ggplot2::element_blank(),
+        axis.ticks.y = ggplot2::element_blank(),
+        axis.title.y = ggplot2::element_blank(),
+        legend.position = "bottom") +
+  ggplot2::guides(size = ggplot2::guide_legend(order = 1))
+```
+
+* `geom_timeline_label`
+
+Provide labels for `geom_timeline`.
+
+```{r fig.width = 7, fig.height = 4, fig.align = "center"}
+noaase_raw %>%
+  eq_clean_data() %>%
+  eq_location_clean() %>%
+  filter(YEAR >= 1900, YEAR <= 2000, COUNTRY %in% c("GREECE", "ITALY")) %>%
+  ggplot(ggplot2::aes(x = DATE,
+                      y = COUNTRY,
+                      size = as.numeric(EQ_PRIMARY),
+                      color = as.numeric(TOTAL_DEATHS),
+                      label = LOCATION_NAME)) +
+  geom_timeline() +
+  geom_timeline_label(n_max = 1) +
+  theme_classic() +
+  labs(size = "Richter scale value", color = "# deaths") +
+  theme(axis.line.y = ggplot2::element_blank(),
+        axis.ticks.y = ggplot2::element_blank(),
+        axis.title.y = ggplot2::element_blank(),
+        legend.position = "bottom") +
+  ggplot2::guides(size = ggplot2::guide_legend(order = 1))
+```
+
+## Maps
+
+* `eq_map`
+
+Maps earthquakes epicenters and annotates each point with pop-up window.
+
+```{r fig.width = 7, fig.height = 4, fig.align = "center"}
+noaase_raw %>%
+  eq_clean_data() %>%
+  dplyr::filter(COUNTRY == "ITALY" & lubridate::year(DATE) >= 2000) %>%
+  eq_map(annot_col = "EQ_PRIMARY")
+```
+
+* `eq_create_label`
+
+Creates an HTML label that can be used as the annotation text in the leaflet
+earthquakes epicenters map from `eq_map`.
+
+```{r fig.width = 7, fig.height = 4, fig.align = "center"}
+noaase_raw %>%
+  eq_clean_data() %>%
+  dplyr::filter(COUNTRY == "CHILE" & lubridate::year(DATE) >= 2000) %>%
+  dplyr::mutate(popup_text = eq_create_label(.)) %>%
+  eq_map(annot_col = "popup_text")
+```
